@@ -1,0 +1,32 @@
+[
+  {
+    "id": 1,
+    "name": "Maitri",
+    "country": "India",
+    "region": "Schirmacher Oasis, Antarctica",
+    "latitude": -70.7667,
+    "longitude": 11.7333,
+    "description": "India's year-round Antarctic research station supporting earth science, atmospheric science and biology studies.",
+    "topics": ["glaciology", "meteorology", "geology"]
+  },
+  {
+    "id": 2,
+    "name": "Bharati",
+    "country": "India",
+    "region": "Larsemann Hills, Antarctica",
+    "latitude": -69.4083,
+    "longitude": 76.1883,
+    "description": "A modern Indian Antarctic station focused on oceanography, geology, atmospheric science and polar logistics.",
+    "topics": ["oceanography", "climate", "logistics"]
+  },
+  {
+    "id": 3,
+    "name": "Dakshin Gangotri",
+    "country": "India",
+    "region": "Queen Maud Land, Antarctica",
+    "latitude": -70.0833,
+    "longitude": 12.0,
+    "description": "India's first Antarctic research station, now preserved as a supply base and historical site.",
+    "topics": ["history", "expeditions"]
+  }
+]

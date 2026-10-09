@@ -1,0 +1,37 @@
+[
+  {
+    "id": 1,
+    "lesson_id": 1,
+    "title": "Antarctica Basics Quiz",
+    "questions": [
+      {
+        "id": 1,
+        "prompt": "Why is Antarctic ice important for global science?",
+        "options": ["It stores fresh water and affects sea level", "It blocks all ocean currents", "It creates tropical rainfall", "It prevents earthquakes"],
+        "answer": 0,
+        "explanation": "Antarctic ice stores a huge amount of fresh water. When scientists study it, they learn about sea-level rise and climate history."
+      },
+      {
+        "id": 2,
+        "prompt": "Which ocean surrounds Antarctica?",
+        "options": ["Indian Ocean only", "Southern Ocean", "Arctic Ocean", "Pacific Ocean only"],
+        "answer": 1,
+        "explanation": "The Southern Ocean surrounds Antarctica and connects polar science to global ocean circulation."
+      }
+    ]
+  },
+  {
+    "id": 2,
+    "lesson_id": 2,
+    "title": "Indian Polar Stations Quiz",
+    "questions": [
+      {
+        "id": 1,
+        "prompt": "Which is a current Indian Antarctic research station?",
+        "options": ["Bharati", "Siachen", "Himadri South", "Vikram"],
+        "answer": 0,
+        "explanation": "Bharati is one of India's active Antarctic research stations, supporting polar science and logistics."
+      }
+    ]
+  }
+]

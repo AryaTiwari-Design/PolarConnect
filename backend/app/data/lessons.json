@@ -1,0 +1,18 @@
+[
+  {
+    "id": 1,
+    "title": "Antarctica Basics",
+    "level": "Beginner",
+    "minutes": 8,
+    "summary": "Learn why Antarctica matters for climate, oceans and global science.",
+    "content": "Antarctica stores most of Earth's fresh water as ice. Its ice sheets, ocean circulation and ecosystems help scientists understand climate change and sea-level rise."
+  },
+  {
+    "id": 2,
+    "title": "Indian Polar Stations",
+    "level": "Beginner",
+    "minutes": 10,
+    "summary": "Explore Maitri, Bharati and the legacy of Dakshin Gangotri.",
+    "content": "India operates polar stations to support long-term scientific monitoring. Maitri and Bharati help researchers study weather, geology, biology and the Southern Ocean."
+  }
+]
