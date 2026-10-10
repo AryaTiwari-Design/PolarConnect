@@ -5,7 +5,5 @@ __pycache__/
 venv/
 node_modules/
 dist/
-backend/polarconnect.db
-ai/rag_index.json
 uploads/
 chroma_db/

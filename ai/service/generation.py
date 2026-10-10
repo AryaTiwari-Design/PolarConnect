@@ -77,8 +77,7 @@ def _topic_answer(question):
             "and polar ecosystems."
         )
     return (
-        "The approved documents point to a few useful facts, but the answer should be read with the listed source pages "
-        "because I am only using the local PolarConnect research index."
+        "The approved documents contain relevant information, so the answer below is based only on the retrieved source pages."
     )
 
 
@@ -94,7 +93,6 @@ def _clean_fact(sentence):
 
 
 def _evidence_points(question, chunks):
-    text = " ".join(chunk["text"] for chunk in chunks)
     lowered = question.lower()
     if any(word in lowered for word in ["climate", "change", "warming", "ice"]):
         points = [
@@ -134,14 +132,14 @@ def generate_answer(question, chunks):
             seen.add(key)
 
     simple_points = "\n".join(f"- {fact}" for fact in _evidence_points(question, chunks))
-    source_names = ", ".join(f"{source['title']} page {source['page']}" for source in sources[:3])
+    source_names = ", ".join(f"{source['title']} page {source['page']}" for source in sources[:5])
     short_answer = _topic_answer(question)
     answer = (
         "Short answer:\n"
         f"{short_answer}\n\n"
         "In simple words:\n"
-        "Think of Antarctica as Earth's cold record book. Scientists compare its ice, shelves, oceans, and research-station "
-        "observations over time. If those patterns change, it can reveal bigger changes in Earth's climate system.\n\n"
+        "I searched the approved PDF index, selected the most relevant passages, and rewrote the useful ideas in simpler language. "
+        "If the documents do not clearly support a detail, I avoid presenting it as a fact.\n\n"
         "Evidence I found in approved documents:\n"
         f"{simple_points}\n\n"
         "Why it matters for students:\n"

@@ -2,3 +2,5 @@ fastapi
 uvicorn[standard]
 pydantic
 pypdf
+chromadb
+sentence-transformers

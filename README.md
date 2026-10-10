@@ -1,84 +1,110 @@
-# PolarConnect
+# PolarConnect RAG
 
-PolarConnect is an AI-powered polar science research, education and exploration platform. This branch contains a basic full-stack implementation covering frontend, backend, database bootstrap, RAG service and map/academy modules.
+PolarConnect RAG is the AI retrieval service for approved polar research PDFs. It ingests PDF documents, extracts page text, chunks the content, stores a local RAG index, retrieves relevant passages for a question, and returns student-friendly answers with source page citations.
 
-## What Is Implemented
+## What Is Kept
 
-- React + Vite frontend with login/register, dashboard, research repository, admin approval, AI chat, station map and Polar Academy.
-- FastAPI backend with JWT auth, role checks, research workflows, chat history, station APIs, lessons, quizzes, XP and badges.
-- Local SQLite bootstrap for quick demos plus MySQL-compatible `database/schema.sql` and `database/seed.sql`.
-- RAG FastAPI service that ingests approved PDFs, chunks them, stores a local JSON index and returns cited answers from retrieved chunks.
-- Docker Compose for running frontend, backend and RAG service together.
+- `ai/` contains the RAG service and PDF pipeline.
+- `ai/rag_index.json` is the local RAG database/index.
+- `ai/vector_store/` is reserved for vector storage upgrades.
+- `research_docs/approved/` contains approved PDFs used by the RAG service.
+- Original helper tests in `ai/test_*.py` are kept.
 
-## Demo Accounts
+## Architecture
 
-These are created automatically by the backend on first startup:
-
-| Role | Email | Password |
-| --- | --- | --- |
-| Admin | `admin@polarconnect.test` | `ChangeMe123` |
-| Researcher | `researcher@polarconnect.test` | `ChangeMe123` |
-| Student | `student@polarconnect.test` | `ChangeMe123` |
-
-## Run Locally
-
-### Backend
-
-```bash
-cd backend
-pip install -r requirements.txt
-uvicorn app.main:app --reload --port 5000
+```text
+Approved PDFs
+    |
+    v
+PDF text extraction
+    |
+    v
+Chunking by page
+    |
+    v
+Local RAG index: ai/rag_index.json
+    |
+    v
+Question retrieval
+    |
+    v
+Student-friendly answer + citations
 ```
 
-Backend API: `http://localhost:5000/api`
+## Run The RAG Service
 
-### RAG Service
+From the project root:
 
-Run from the repository root so the `ai` package and PDF paths resolve correctly.
-
-```bash
-pip install -r ai/requirements.txt
-uvicorn ai.service.main:app --reload --port 8000
+```powershell
+cd "C:\Users\Pari Mishra\OneDrive\Desktop\PolarConnect\PolarConnect-1"
+.\venv\Scripts\Activate.ps1
+pip install -r ai\requirements.txt
+python -m uvicorn ai.service.main:app --host 127.0.0.1 --port 8000
 ```
 
-RAG health: `http://localhost:8000/health`
+Health check:
 
-### Frontend
-
-```bash
-cd frontend
-npm install
-npm run dev
+```powershell
+Invoke-RestMethod http://127.0.0.1:8000/health
 ```
 
-Frontend: `http://localhost:5173`
+API docs:
 
-### Docker
-
-```bash
-docker compose up --build
+```text
+http://127.0.0.1:8000/docs
 ```
 
-## Main API Routes
+## Ingest PDFs
 
-- `POST /api/auth/register`
-- `POST /api/auth/login`
-- `GET /api/auth/me`
-- `GET /api/research`
-- `POST /api/research`
-- `GET /api/admin/research/pending`
-- `POST /api/admin/research/{id}/approve`
-- `POST /api/admin/research/{id}/reject`
-- `POST /api/chat`
-- `GET /api/chat/history`
-- `GET /api/stations`
-- `GET /api/education`
-- `GET /api/quizzes/{id}`
-- `POST /api/quizzes/{id}/submit`
-- `GET /api/users/me/progress`
+Ingest one PDF:
 
-## Notes
+```powershell
+$body = @{
+  paper_id = "Antarctic_factsheet"
+  title = "Antarctic_factsheet"
+  file_path = "research_docs/approved/Antarctic_factsheet.pdf"
+} | ConvertTo-Json
 
-- The local backend uses SQLite at `backend/polarconnect.db` for fast demos.
-- The database folder contains MySQL DDL for handoff to the final database owner.
-- The RAG service has a lexical fallback retrieval/generation path. It can be extended with ChromaDB and an LLM provider later without changing the backend API contract.
+Invoke-RestMethod -Uri http://127.0.0.1:8000/ingest -Method Post -ContentType "application/json" -Body $body
+```
+
+Ingest every approved PDF:
+
+```powershell
+Invoke-RestMethod -Uri http://127.0.0.1:8000/ingest/approved -Method Post
+```
+
+List indexed documents:
+
+```powershell
+Invoke-RestMethod http://127.0.0.1:8000/documents
+```
+
+Build or rebuild the ChromaDB vector index from the existing JSON RAG database:
+
+```powershell
+Invoke-RestMethod -Uri http://127.0.0.1:8000/vector/rebuild -Method Post
+```
+
+Ask a question:
+
+```powershell
+$body = @{ question = "Why do scientists study Antarctic ice?"; limit = 5 } | ConvertTo-Json
+Invoke-RestMethod -Uri http://127.0.0.1:8000/chat -Method Post -ContentType "application/json" -Body $body
+```
+
+## Current RAG Level
+
+This is now a professional hybrid RAG service:
+
+- PDF extraction uses `pypdf`.
+- Chunking is page-aware with overlap.
+- ChromaDB stores semantic vector embeddings when `chromadb` and `sentence-transformers` are installed.
+- Retrieval uses ChromaDB semantic search first.
+- If ChromaDB dependencies are unavailable, retrieval safely falls back to lexical scoring with document-frequency weighting.
+- Answers are formatted for students and include source pages.
+
+Future production upgrade:
+
+- Add an LLM provider for stronger final answer synthesis while preserving citations.
+- Add admin approval metadata and richer document metadata filters.

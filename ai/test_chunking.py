@@ -1,28 +1,18 @@
-from extraction import extract_text_from_pdf
+import unittest
+
 from chunking import chunk_pages
 
 
-pdf_path = "../research_docs/approved/Antarctic_Factsheet.pdf"
+class ChunkingTests(unittest.TestCase):
+    def test_chunks_page_text_with_page_number(self):
+        pages = [{"page": 1, "text": "A" * 1400}]
 
-# Step 1: Extract PDF
-pages = extract_text_from_pdf(pdf_path)
+        chunks = chunk_pages(pages, chunk_size=500, overlap=100)
 
-print("Total pages:", len(pages))
-
-
-# Step 2: Create chunks
-chunks = chunk_pages(pages)
-
-print("Total chunks:", len(chunks))
+        self.assertGreater(len(chunks), 1)
+        self.assertEqual(chunks[0]["page"], 1)
+        self.assertLessEqual(len(chunks[0]["text"]), 500)
 
 
-# Step 3: Display first 5 chunks
-for i, chunk in enumerate(chunks[:5]):
-
-    print("\n" + "=" * 60)
-
-    print("CHUNK:", i + 1)
-    print("PAGE:", chunk["page"])
-
-    print("\nTEXT:")
-    print(chunk["text"])
+if __name__ == "__main__":
+    unittest.main()
