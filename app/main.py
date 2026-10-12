@@ -4,6 +4,7 @@ from app.database.init_db import initialize_database
 from app.api.auth import router as auth_router
 from app.api.polar_data import router as polar_data_router
 from app.api.analysis import router as analysis_router
+from app.api.frontend import router as frontend_router
 from app.api.education import router as education_router
 from app.api.reports import router as reports_router
 
@@ -27,5 +28,6 @@ def health_check():
 app.include_router(auth_router)
 app.include_router(polar_data_router)
 app.include_router(analysis_router)
+app.include_router(frontend_router)
 app.include_router(education_router)
 app.include_router(reports_router)

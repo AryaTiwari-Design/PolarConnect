@@ -1,3 +1,5 @@
+import { useLanguage } from '../context/LanguageContext'
+
 export function Loading({ label = 'Loading…' }) {
   return (
     <div className="flex items-center justify-center gap-3 py-16 text-sm text-navy-600" role="status">
@@ -19,12 +21,14 @@ export function EmptyState({ icon = '🧊', title, text, action }) {
 }
 
 export function ErrorState({ message, onRetry }) {
+  const { t } = useLanguage()
+
   return (
     <div className="rounded-xl border border-rose-200 bg-rose-50 px-6 py-8 text-center" role="alert">
-      <h3 className="font-bold text-rose-800">Could not load this page</h3>
+      <h3 className="font-bold text-rose-800">{t('couldNotLoad')}</h3>
       <p className="mt-1 text-sm text-rose-700">{message}</p>
       {onRetry && (
-        <button onClick={onRetry} className="btn-secondary mt-4">Try again</button>
+        <button onClick={onRetry} className="btn-secondary mt-4">{t('tryAgain')}</button>
       )}
     </div>
   )

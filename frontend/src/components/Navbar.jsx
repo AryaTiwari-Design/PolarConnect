@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { Link, NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { useLanguage } from '../context/LanguageContext'
+import { useTheme } from '../context/ThemeContext'
 import { ROLES } from '../utils/constants'
 
 const linkCls = ({ isActive }) =>
@@ -8,20 +10,22 @@ const linkCls = ({ isActive }) =>
 
 export default function Navbar() {
   const { user, logout } = useAuth()
+  const { language, setLanguage, t } = useLanguage()
+  const { theme, toggleTheme } = useTheme()
   const navigate = useNavigate()
   const [open, setOpen] = useState(false)
   const close = () => setOpen(false)
 
   const links = user
     ? [
-        ['/dashboard', 'Dashboard'],
-        ['/research', 'Research'],
-        ['/search', 'Search'],
-        ['/chat', 'Ask AI'],
-        ['/map', 'Map'],
-        ['/academy', 'Academy'],
-        ...(user.role !== ROLES.STUDENT ? [['/research/upload', 'Upload']] : []),
-        ...(user.role === ROLES.ADMIN ? [['/admin', 'Admin']] : []),
+        ['/dashboard', t('dashboard')],
+        ['/research', t('research')],
+        ['/search', t('search')],
+        ['/chat', t('askAi')],
+        ['/map', t('map')],
+        ['/academy', t('academy')],
+        ...(user.role !== ROLES.STUDENT ? [['/research/upload', t('upload')]] : []),
+        ...(user.role === ROLES.ADMIN ? [['/admin', t('admin')]] : []),
       ]
     : []
 
@@ -32,10 +36,10 @@ export default function Navbar() {
   }
 
   return (
-    <header className="sticky top-0 z-[1100] bg-navy-900 text-white">
+    <header className="site-header">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 sm:px-6">
-        <Link to="/" onClick={close} className="flex items-center gap-2 font-display text-lg font-extrabold">
-          <span aria-hidden="true">🧊</span> PolarConnect
+        <Link to="/" onClick={close} className="flex items-center gap-3 font-display text-lg font-extrabold">
+          <span className="brand-mark" aria-hidden="true">PC</span> PolarConnect
         </Link>
 
         <nav className="hidden items-center gap-1 lg:flex" aria-label="Main">
@@ -50,14 +54,22 @@ export default function Navbar() {
               <span className="text-sm text-glacier-200">
                 {user.name} <span className="ml-1 rounded-full bg-white/10 px-2 py-0.5 text-xs">{user.role}</span>
               </span>
-              <button onClick={handleLogout} className="rounded-lg border border-white/25 px-3 py-1.5 text-sm font-semibold hover:bg-white/10">Log out</button>
+              <button onClick={handleLogout} className="rounded-lg border border-white/25 px-3 py-1.5 text-sm font-semibold hover:bg-white/10">{t('logout')}</button>
             </>
           ) : (
             <>
-              <Link to="/login" className="px-3 py-2 text-sm font-semibold text-glacier-200 hover:text-white">Log in</Link>
-              <Link to="/register" className="rounded-lg bg-aurora-400 px-4 py-2 text-sm font-bold text-navy-900 hover:bg-aurora-300">Create account</Link>
+              <Link to="/login" className="px-3 py-2 text-sm font-semibold text-glacier-200 hover:text-white">{t('login')}</Link>
+              <Link to="/register" className="rounded-lg bg-aurora-400 px-4 py-2 text-sm font-bold text-navy-900 hover:bg-aurora-300">{t('createAccount')}</Link>
             </>
           )}
+          <div className="nav-tools" aria-label="Display settings">
+            <button onClick={() => setLanguage(language === 'en' ? 'hi' : 'en')} aria-label={t('language')}>
+              {language === 'en' ? 'हिं' : 'EN'}
+            </button>
+            <button onClick={toggleTheme} aria-label={theme === 'dark' ? t('lightMode') : t('darkMode')}>
+              {theme === 'dark' ? '☀' : '◐'}
+            </button>
+          </div>
         </div>
 
         <button
@@ -80,14 +92,18 @@ export default function Navbar() {
             ))}
             {user ? (
               <button onClick={handleLogout} className="mt-2 rounded-lg border border-white/25 px-3 py-2 text-left text-sm font-semibold">
-                Log out ({user.name})
+                {t('logout')} ({user.name})
               </button>
             ) : (
               <>
-                <Link to="/login" onClick={close} className="px-3 py-2 text-sm font-semibold text-glacier-200">Log in</Link>
-                <Link to="/register" onClick={close} className="rounded-lg bg-aurora-400 px-4 py-2 text-center text-sm font-bold text-navy-900">Create account</Link>
+                <Link to="/login" onClick={close} className="px-3 py-2 text-sm font-semibold text-glacier-200">{t('login')}</Link>
+                <Link to="/register" onClick={close} className="rounded-lg bg-aurora-400 px-4 py-2 text-center text-sm font-bold text-navy-900">{t('createAccount')}</Link>
               </>
             )}
+            <div className="nav-tools mt-3">
+              <button onClick={() => setLanguage(language === 'en' ? 'hi' : 'en')}>{language === 'en' ? 'हिंदी' : 'English'}</button>
+              <button onClick={toggleTheme}>{theme === 'dark' ? t('lightMode') : t('darkMode')}</button>
+            </div>
           </div>
         </nav>
       )}

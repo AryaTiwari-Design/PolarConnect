@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom'
 import ChatUI from '../components/ChatUI'
 import { Loading } from '../components/States'
 import { askQuestion, getChatHistory } from '../services/chat'
+import { useLanguage } from '../context/LanguageContext'
 
 export default function Chat() {
   const [params] = useSearchParams()
@@ -10,6 +11,7 @@ export default function Chat() {
   const [ready, setReady] = useState(false)
   const [sending, setSending] = useState(false)
   const [error, setError] = useState('')
+  const { t } = useLanguage()
 
   useEffect(() => {
     getChatHistory()
@@ -34,8 +36,8 @@ export default function Chat() {
 
   return (
     <div className="container-page">
-      <h1 className="text-3xl font-extrabold sm:text-4xl">AI science assistant</h1>
-      <p className="mb-5 mt-1 text-navy-600">Ask in plain language. Answers use approved papers only.</p>
+      <h1 className="text-3xl font-extrabold sm:text-4xl">{t('chatTitle')}</h1>
+      <p className="mb-5 mt-1 text-navy-600">{t('chatIntro')}</p>
       {ready ? <ChatUI messages={messages} sending={sending} error={error} onSend={send} initialInput={params.get('q') || ''} /> : <Loading />}
     </div>
   )

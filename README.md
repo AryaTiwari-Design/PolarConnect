@@ -133,7 +133,7 @@ Open http://127.0.0.1:8000/docs and http://127.0.0.1:8000/health.
 - Temperature trend, simple regression prediction, Z-score anomalies, insights
 - Education resources and research-station reference locations
 - PDF report generation
-- SQLite database created automatically; MySQL is not needed to run this starter
+- SQLite database created automatically for local development
 
 ## Test authentication
 1. In `/docs`, use `POST /api/auth/register` with:
@@ -222,27 +222,25 @@ PolarConnect provides:
            │  HTTP / JSON
            ▼
 ┌──────────────────────┐
-│  Node.js / Express   │   ← the ONLY service the browser talks to
-│      (Backend)       │
+│ Python FastAPI       │
+│ Backend API          │
 └──────┬────────┬──────┘
        │        │
        ▼        ▼
 ┌────────────┐ ┌────────────────────────┐
-│ PostgreSQL │ │ Python RAG (FastAPI)   │
-│            │ │  ├─ PDF parsing        │
+│ SQLite     │ │ RAG / AI modules       │
+│ local data │ │  ├─ PDF parsing        │
 │ users      │ │  ├─ Chunking           │
-│ papers     │ │  ├─ Embeddings         │
-│ stations   │ │  ├─ ChromaDB (vectors) │
-│ quizzes    │ │  └─ LLM API            │
-│ progress   │ └────────────────────────┘
-└────────────┘
+│ stations   │ │  ├─ Retrieval          │
+│ education  │ │  └─ ChromaDB-ready     │
+└────────────┘ └────────────────────────┘
 ```
 
 **Why this shape**
 
-- The browser never calls the AI service directly, so Express checks login and role first and API keys stay on the server.
-- The AI service knows nothing about users. It only handles "ingest this paper" and "answer this question".
-- Each team member can build and test their part independently against the API contract.
+- The browser calls the FastAPI backend through `/api/...` endpoints.
+- SQLite is used for the local MVP so the backend can run without a separate database server.
+- The RAG files under `ai/` can be run or expanded separately from the core app.
 
 ---
 
@@ -252,9 +250,9 @@ PolarConnect provides:
 |---|---|
 | **Frontend** | React (Vite), React Router, Context API, Tailwind CSS |
 | **Map** | Leaflet + react-leaflet |
-| **Backend** | Python + FasApi|
-| **Database** | MySQL |
-| **AI service** |RAG |
+| **Backend** | Python + FastAPI |
+| **Database** | SQLite for local MVP |
+| **AI service** | RAG modules with ChromaDB-ready vector storage |
 | **DevOps** | Docker, docker-compose, Git and GitHub |
 
 ---
@@ -285,26 +283,24 @@ PolarConnect/
 │           ├── map/          interactive Antarctica map
 │           └── education/    Polar Academy (lessons, quizzes, XP, badges)
 │
-├── backend/                  Express API
-│   └── src/
-│       ├── config/           DB connection, env
-│       ├── routes/
-│       ├── controllers/
-│       ├── middleware/       JWT auth, role check, file upload, error handler
-│       ├── services/         aiClient.js (only file that calls the AI service)
-│       ├── app.js
-│       └── server.js
+├── app/                      FastAPI backend
+│   ├── main.py               app entry point
+│   ├── api/                  auth, polar data, analysis, education, reports
+│   ├── database/             SQLite connection and initialization
+│   ├── services/             security helpers
+│   └── schemas.py            request models
 │
-├── database/                 PostgreSQL schema and seed data
+├── backend/                  placeholder package from an older/backend split
+│
+├── database/                 SQL schema and seed references
 │   ├── schema.sql
 │   ├── seed.sql
 │   └── README.md
 │
-├── ai-service/               Python RAG service
-│   ├── main.py               FastAPI: /ingest, /chat, /health
-│   ├── ingestion.py          PDF → chunks → embeddings
-│   ├── retrieval.py          vector search
-│   ├── generation.py         prompt + answer with sources
+├── ai/                       Python RAG modules and service package
+│   ├── service/              service-oriented RAG modules
+│   ├── rag_index.json        local RAG index
+│   ├── vector_store/         vector store data
 │   └── requirements.txt
 │
 ├── data/
@@ -322,9 +318,8 @@ PolarConnect/
 
 ### Prerequisites
 
-- [Docker](https://www.docker.com/) and docker-compose (recommended)
-- Or, for running services manually: Node.js 18+, Python 3.10+, PostgreSQL 14+
-- An API key for the LLM provider used by the AI service
+- [Docker](https://www.docker.com/) and docker-compose (optional)
+- Or, for running services manually: Node.js 18+ and Python 3.10+
 
 ### Option 1: Run everything with Docker (recommended)
 
@@ -343,35 +338,19 @@ docker-compose up --build
 | Service | URL |
 |---|---|
 | Frontend | http://localhost:5173 |
-| Backend API | http://localhost:5000/api |
-| AI service (internal) | http://localhost:8000 |
-| PostgreSQL | localhost:5432 |
+| Backend API | http://localhost:8000/api |
+| API docs | http://localhost:8000/docs |
 
-The database schema and demo data (`schema.sql`, `seed.sql`) load automatically the first time the Postgres container starts.
+The FastAPI backend initializes the local SQLite database on startup.
 
 ### Option 2: Run each service manually
 
-**Database**
-```bash
-createdb polarconnect
-psql -d polarconnect -f database/schema.sql
-psql -d polarconnect -f database/seed.sql
-```
-
 **Backend**
 ```bash
-cd backend
-npm install
-npm run dev          # http://localhost:5000
-```
-
-**AI service**
-```bash
-cd ai-service
 python -m venv venv
 source venv/bin/activate        # Windows: venv\Scripts\activate
 pip install -r requirements.txt
-uvicorn main:app --reload --port 8000
+uvicorn app.main:app --reload --port 8000
 ```
 
 **Frontend**
@@ -383,13 +362,7 @@ npm run dev          # http://localhost:5173
 
 ### Demo accounts
 
-Seeded by `database/seed.sql`. Change these before any real deployment.
-
-| Role | Email | Password |
-|---|---|---|
-| Admin | `admin@polarconnect.test` | `ChangeMe123` |
-| Researcher | `researcher@polarconnect.test` | `ChangeMe123` |
-| Student | `student@polarconnect.test` | `ChangeMe123` |
+Create a demo user through `POST /api/auth/register` or the app registration screen.
 
 ---
 
@@ -399,55 +372,28 @@ Copy `.env.example` to `.env`. Never commit `.env`.
 
 ```env
 # Backend
-PORT=5000
-JWT_SECRET=change_this_secret
-JWT_EXPIRES_IN=1d
-UPLOAD_DIR=./uploads
-AI_SERVICE_URL=http://ai-service:8000
-
-# Database
-DB_HOST=postgres
-DB_PORT=5432
-DB_NAME=polarconnect
-DB_USER=postgres
-DB_PASSWORD=change_this_password
-
-# AI service
-LLM_API_KEY=your_llm_api_key
-EMBEDDING_MODEL=all-MiniLM-L6-v2
-CHROMA_PATH=./chroma_db
+POLAR_SECRET_KEY=change_this_secret
+DATABASE_PATH=data/polar_connect.db
 
 # Frontend
-VITE_API_URL=http://localhost:5000/api
+VITE_API_URL=http://localhost:8000/api
+VITE_USE_MOCK=true
 ```
 
 ---
 
 ## 📡 API Overview
 
-All requests go to the Express backend. Protected routes need the header `Authorization: Bearer <token>`. Errors always use the format `{ "error": "message" }`.
-
-Full request and response examples are in [`docs/api-contract.md`](docs/api-contract.md).
+All requests go to the FastAPI backend. Protected routes need the header `Authorization: Bearer <token>`. FastAPI validation and API errors use the standard `detail` field.
 
 | Group | Endpoints | Access |
 |---|---|---|
-| **Auth** | `POST /api/auth/register` · `POST /api/auth/login` · `POST /api/auth/logout` · `GET /api/auth/me` | Public / logged in |
-| **Research** | `GET /api/research` · `GET /api/research/:id` · `POST /api/research` · `GET /api/research/:id/download` | Logged in (upload: researcher) |
-| **Admin approval** | `GET /api/admin/research/pending` · `POST /api/admin/research/:id/approve` · `POST /api/admin/research/:id/reject` | Admin |
-| **AI chat** | `POST /api/chat` · `GET /api/chat/history` | Logged in |
-| **Map** | `GET /api/stations` · `GET /api/stations/:id` | Logged in |
-| **Education** | `GET /api/education` · `GET /api/education/:id` · `GET /api/quizzes/:id` · `POST /api/quizzes/:id/submit` | Logged in |
-| **Progress** | `GET /api/users/me/progress` · `GET /api/users/me/xp` · `GET /api/users/me/badges` | Logged in |
-| **System** | `GET /api/health` | Public |
-
-**Internal AI service (called only by the backend)**
-
-| Endpoint | Purpose |
-|---|---|
-| `POST /ingest` | Chunk, embed and store an approved paper |
-| `POST /chat` | Retrieve relevant chunks and return `{ answer, sources: [{ paper_id, title, page }] }` |
-| `DELETE /documents/:paper_id` | Remove a paper from the index |
-| `GET /health` | Service check |
+| **Auth** | `POST /api/auth/register` · `POST /api/auth/login` · `GET /api/users/me` | Public / logged in |
+| **Polar data** | `GET /api/polar-data` · `GET /api/polar-data/{id}` · `POST /api/polar-data` · `POST /api/polar-data/fetch-nasa` | Public / logged in for writes |
+| **Analysis** | `GET /api/analysis/trend` · `GET /api/analysis/prediction` · `GET /api/analysis/anomalies` · `GET /api/analysis/insights` | Public |
+| **Education** | `GET /api/education/resources` · `GET /api/research-stations` | Public |
+| **Reports** | `GET /api/reports/summary.pdf` | Public |
+| **System** | `GET /` · `GET /health` | Public |
 
 **Design rules**
 
@@ -480,7 +426,7 @@ Admin reviews  ──── reject ────►  status: REJECTED
      approve
         │
         ▼
-Backend calls AI service /ingest
+Backend/RAG pipeline indexes approved content
         │
         ▼
 PDF → chunks → embeddings → ChromaDB   (status: APPROVED)
@@ -489,7 +435,7 @@ PDF → chunks → embeddings → ChromaDB   (status: APPROVED)
 User asks a question in chat
         │
         ▼
-Backend forwards to AI service /chat
+Backend/RAG pipeline retrieves relevant content
         │
         ▼
 Relevant chunks retrieved → LLM answers using only those chunks
@@ -506,7 +452,7 @@ If the approved papers do not cover a question, the assistant says so instead of
 
 | Member | Role | Owns |
 |---|---|---|
-| **Pari** | 🤖 AI + RAG | `ai-service/` |
+| **Pari** | 🤖 AI + RAG | `ai/` |
 | **Arya** | 🔗 Integration + Presentation (Team Lead) | Root files, `docs/`, `tests/`, `demo/`, `.github/` |
 | **Ashish** | ⚙️ Backend | `backend/` |
 | **Harsh** | 🗄️ Database + Repository | `database/`, `data/sample-papers/` |

@@ -7,6 +7,8 @@ import { listResearch } from '../services/research'
 import { listStations } from '../modules/map/services/stations'
 import { CATEGORIES } from '../utils/constants'
 import { yearOptions } from '../utils/helpers'
+import { useLanguage } from '../context/LanguageContext'
+import VoiceInputButton from '../components/VoiceInputButton'
 
 export default function Search() {
   const [params, setParams] = useSearchParams()
@@ -14,6 +16,7 @@ export default function Search() {
   const year = params.get('year') || ''
   const category = params.get('category') || ''
   const station = params.get('station') || ''
+  const { t } = useLanguage()
 
   // Wait a moment after typing before searching
   const [text, setText] = useState(q)
@@ -43,13 +46,16 @@ export default function Search() {
 
   return (
     <div className="container-page">
-      <h1 className="text-3xl font-extrabold sm:text-4xl">Search research</h1>
-      <p className="mt-1 text-navy-600">Search titles, authors, topics and summaries across approved papers.</p>
+      <h1 className="text-3xl font-extrabold sm:text-4xl">{t('searchTitle')}</h1>
+      <p className="mt-1 text-navy-600">{t('searchIntro')}</p>
 
       <div className="panel mt-6 grid gap-4 p-4 sm:grid-cols-2 lg:grid-cols-4">
         <div className="sm:col-span-2 lg:col-span-4">
-          <label htmlFor="q" className="label">Keywords</label>
-          <input id="q" className="input" placeholder="For example: krill, ice shelf, ozone" value={text} onChange={(e) => setText(e.target.value)} />
+          <label htmlFor="q" className="label">{t('keywords')}</label>
+          <div className="voice-input-row">
+            <input id="q" className="input" placeholder={t('keywordPlaceholder')} value={text} onChange={(e) => setText(e.target.value)} />
+            <VoiceInputButton onText={(spoken) => setText((current) => `${current} ${spoken}`.trim())} />
+          </div>
         </div>
         <div>
           <label htmlFor="year" className="label">Year</label>
@@ -73,7 +79,7 @@ export default function Search() {
           </select>
         </div>
         <div className="flex items-end">
-          <button className="btn-secondary w-full" onClick={clear} disabled={!hasFilters}>Clear filters</button>
+          <button className="btn-secondary w-full" onClick={clear} disabled={!hasFilters}>{t('clearFilters')}</button>
         </div>
       </div>
 

@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { SUGGESTED_QUESTIONS } from '../utils/constants'
+import { useLanguage } from '../context/LanguageContext'
+import VoiceInputButton from './VoiceInputButton'
 
 function Sources({ sources }) {
   if (!sources) return null
@@ -42,6 +44,7 @@ function Message({ m }) {
 
 export default function ChatUI({ messages, sending, error, onSend, initialInput = '' }) {
   const [input, setInput] = useState(initialInput)
+  const { t } = useLanguage()
   const endRef = useRef(null)
 
   useEffect(() => {
@@ -62,9 +65,9 @@ export default function ChatUI({ messages, sending, error, onSend, initialInput 
         {messages.length === 0 && (
           <div className="mx-auto max-w-lg py-8 text-center">
             <div className="text-4xl" aria-hidden="true">🧊</div>
-            <h2 className="mt-3 text-xl font-bold">Ask anything about polar research</h2>
+            <h2 className="mt-3 text-xl font-bold">{t('chatEmptyTitle')}</h2>
             <p className="mt-1 text-sm text-navy-600">
-              Answers come only from papers approved by our admins, and every answer shows the paper and page it came from.
+              {t('chatEmptyText')}
             </p>
             <div className="mt-5 flex flex-wrap justify-center gap-2">
               {SUGGESTED_QUESTIONS.map((q) => (
@@ -91,17 +94,18 @@ export default function ChatUI({ messages, sending, error, onSend, initialInput 
         <div ref={endRef} />
       </div>
 
-      <form onSubmit={submit} className="flex gap-2 border-t border-glacier-200 p-3">
+      <form onSubmit={submit} className="chat-input-form flex gap-2 border-t border-glacier-200 p-3">
         <label htmlFor="chat-input" className="sr-only">Your question</label>
         <input
           id="chat-input"
           className="input"
-          placeholder="Ask about ice, oceans, wildlife, stations…"
+          placeholder={t('chatPlaceholder')}
           value={input}
           onChange={(e) => setInput(e.target.value)}
           maxLength={500}
         />
-        <button className="btn-primary" disabled={!input.trim() || sending}>Ask</button>
+        <VoiceInputButton disabled={sending} onText={(text) => setInput((current) => `${current} ${text}`.trim())} />
+        <button className="btn-primary" disabled={!input.trim() || sending}>{t('ask')}</button>
       </form>
     </div>
   )

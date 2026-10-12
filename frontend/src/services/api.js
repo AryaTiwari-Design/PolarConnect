@@ -1,9 +1,9 @@
 import { mockRequest } from '../mocks/mockServer'
 
-// VITE_USE_MOCK=true (default) -> demo data, no backend needed
-// VITE_USE_MOCK=false          -> real Express backend at VITE_API_URL
-export const USE_MOCK = import.meta.env.VITE_USE_MOCK !== 'false'
-const BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
+// VITE_USE_MOCK=true  -> demo data, no backend needed
+// VITE_USE_MOCK=false -> real FastAPI backend at VITE_API_URL
+export const USE_MOCK = import.meta.env.VITE_USE_MOCK === 'true'
+const BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000/api'
 
 const TOKEN_KEY = 'polarconnect_token'
 export const getToken = () => localStorage.getItem(TOKEN_KEY)
@@ -37,7 +37,8 @@ async function request(method, path, body, { raw = false } = {}) {
       clearToken()
       window.dispatchEvent(new Event('polarconnect:unauthorized'))
     }
-    const err = new Error(data.error || `Request failed (${res.status})`)
+    const message = data.error || data.detail || `Request failed (${res.status})`
+    const err = new Error(message)
     err.status = res.status
     throw err
   }

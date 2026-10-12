@@ -1,0 +1,34 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_PATH: /app/data/polar_connect.db
+      POLAR_SECRET_KEY: ${POLAR_SECRET_KEY:-local-development-secret-change-this-before-deployment}
+    volumes:
+      - polar_data:/app/data
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "5173:5173"
+    environment:
+      VITE_API_URL: ${VITE_API_URL:-http://10.8.9.147:8000/api}
+      VITE_USE_MOCK: ${VITE_USE_MOCK:-false}
+      CHOKIDAR_USEPOLLING: "true"
+    depends_on:
+      api:
+        condition: service_healthy
+
+volumes:
+  polar_data:

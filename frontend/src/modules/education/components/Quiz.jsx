@@ -2,22 +2,54 @@ import { useState } from 'react'
 import useFetch from '../../../hooks/useFetch'
 import { Loading, ErrorState } from '../../../components/States'
 import { getQuiz, submitQuiz } from '../services/education'
+import { useLanguage } from '../../../context/LanguageContext'
+
+function resultMessage(score, total, t) {
+  const ratio = score / total
+  if (ratio === 1) return [t('missionComplete'), t('perfectScore')]
+  if (ratio >= 0.67) return [t('strongWork'), t('strongWorkText')]
+  return [t('goodAttempt'), t('goodAttemptText')]
+}
+
+function bestCorrectStreak(results = []) {
+  return results.reduce(
+    (state, item) => {
+      const current = item.correct ? state.current + 1 : 0
+      return { current, best: Math.max(state.best, current) }
+    },
+    { current: 0, best: 0 },
+  ).best
+}
 
 export default function Quiz({ quizId, onFinished }) {
+  const { t } = useLanguage()
   const { data: quiz, loading, error, reload } = useFetch(() => getQuiz(quizId), [quizId])
   const [index, setIndex] = useState(0)
   const [answers, setAnswers] = useState({})
   const [result, setResult] = useState(null)
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState('')
+  const [hintsUsed, setHintsUsed] = useState({})
 
-  if (loading) return <Loading label="Loading quiz…" />
+  const answeredCount = Object.keys(answers).length
+
+  if (loading) return <Loading label={t('preparingQuiz')} />
   if (error) return <ErrorState message={error} onRetry={reload} />
 
-  const questions = quiz.questions
+  const questions = quiz?.questions || []
+  if (!questions.length) return <ErrorState message={t('noQuizQuestions')} onRetry={reload} />
+
   const q = questions[index]
   const isLast = index === questions.length - 1
   const allAnswered = questions.every((_, i) => answers[i] !== undefined)
+  const progress = Math.round((answeredCount / questions.length) * 100)
+  const checkpoint = Math.min(4, Math.floor((answeredCount / questions.length) * 4))
+  const energy = Math.round((answeredCount / questions.length) * 100)
+  const hintCount = Object.keys(hintsUsed).length
+  const missionScore = Math.max(0, answeredCount * 12 + checkpoint * 8 - hintCount * 4)
+  const selectedAnswer = answers[index]
+  const [title, subtitle] = result ? resultMessage(result.score, result.total, t) : []
+  const encouragement = [t('quizEncouragement1'), t('quizEncouragement2'), t('quizEncouragement3'), t('quizEncouragement4')]
 
   const submit = async () => {
     setSubmitting(true)
@@ -35,105 +67,225 @@ export default function Quiz({ quizId, onFinished }) {
 
   const retry = () => {
     setAnswers({})
+    setHintsUsed({})
     setIndex(0)
     setResult(null)
+    setSubmitError('')
   }
 
-  // ---------- results ----------
+  const selectAnswer = (optionIndex) => {
+    setAnswers((current) => ({ ...current, [index]: optionIndex }))
+  }
+
+  const jumpToFirstMissed = () => {
+    const missed = questions.findIndex((_, i) => answers[i] === undefined)
+    if (missed >= 0) setIndex(missed)
+  }
+
+  const useHint = () => {
+    if (!q.hint) return
+    setHintsUsed((current) => ({ ...current, [index]: true }))
+  }
+
+  const remaining = questions.length - answeredCount
+  const statusText = allAnswered
+    ? t('allSetSubmit')
+    : `${remaining} ${remaining === 1 ? t('questionLeft') : t('questionsLeft')}`
+
   if (result) {
-    const perfect = result.score === result.total
+    const accuracy = Math.round((result.score / result.total) * 100)
+    const medal = accuracy === 100 ? t('goldMedal') : accuracy >= 70 ? t('silverMedal') : t('bronzeMedal')
+    const streak = bestCorrectStreak(result.results)
+
     return (
-      <div className="panel p-6">
-        <h2 className="text-2xl font-bold">
-          {perfect ? 'Perfect score!' : `You scored ${result.score} out of ${result.total}`}
-        </h2>
-        <p className="mt-1 text-sm text-navy-600">
-          {result.xpEarned > 0
-            ? `You earned ${result.xpEarned} XP.`
-            : 'No new XP this time. XP is awarded the first time you finish a quiz.'}
-        </p>
+      <section className="quiz-shell quiz-results" aria-live="polite">
+        <div className="quiz-results__hero">
+          <p className="eyebrow">{t('quizDebrief')}</p>
+          <h2>{title}</h2>
+          <p>{subtitle}</p>
+          <div className="score-ring" aria-label={`Score ${result.score} out of ${result.total}`}>
+            <strong>{result.score}/{result.total}</strong>
+            <span>{t('score')}</span>
+          </div>
+          <p className="quiz-xp">
+            {result.xpEarned > 0
+              ? `${t('xpEarnedPrefix')} ${result.xpEarned} ${t('xpEarnedSuffix')}`
+              : t('noNewXp')}
+          </p>
+          <div className="quiz-stat-grid">
+            <div>
+              <span>{t('accuracy')}</span>
+              <strong>{accuracy}%</strong>
+            </div>
+            <div>
+              <span>{t('streak')}</span>
+              <strong>{streak}x</strong>
+            </div>
+            <div>
+              <span>{t('medalEarned')}</span>
+              <strong>{medal}</strong>
+            </div>
+          </div>
+        </div>
 
         {result.newBadges.length > 0 && (
-          <div className="mt-4 rounded-xl border border-ember-300 bg-ember-300/20 p-4">
-            <p className="text-sm font-bold">New badge{result.newBadges.length > 1 ? 's' : ''} unlocked</p>
-            <ul className="mt-2 flex flex-wrap gap-3">
-              {result.newBadges.map((b) => (
-                <li key={b.id} className="flex items-center gap-2 rounded-lg bg-white px-3 py-2 text-sm font-semibold">
-                  <span className="text-2xl" aria-hidden="true">{b.icon}</span>{b.name}
+          <div className="badge-party">
+            <p>{result.newBadges.length > 1 ? t('newBadgesUnlocked') : t('newBadgeUnlocked')}</p>
+            <ul>
+              {result.newBadges.map((badge) => (
+                <li key={badge.id}>
+                  <span aria-hidden="true">{badge.icon}</span>
+                  {badge.name}
                 </li>
               ))}
             </ul>
           </div>
         )}
 
-        <ol className="mt-6 space-y-4">
+        <ol className="answer-review">
           {questions.map((qq, i) => {
-            const r = result.results[i]
+            const review = result.results[i]
+            const chosen = answers[i]
             return (
-              <li key={qq.id} className={`rounded-xl border p-4 ${r.correct ? 'border-emerald-200 bg-emerald-50' : 'border-rose-200 bg-rose-50'}`}>
-                <p className="font-semibold">{qq.text}</p>
-                <p className="mt-1 text-sm">
-                  Your answer: <strong>{qq.options[answers[i]]}</strong> {r.correct ? '(correct)' : '(not quite)'}
-                </p>
-                {!r.correct && <p className="text-sm">Correct answer: <strong>{qq.options[r.correctIndex]}</strong></p>}
-                <p className="mt-1 text-sm text-navy-600">{r.explanation}</p>
+              <li key={qq.id} className={review.correct ? 'is-correct' : 'is-missed'}>
+                <div>
+                  <span>{review.correct ? t('correct') : t('review')}</span>
+                  <h3>{qq.text}</h3>
+                </div>
+                <p>{t('yourPick')}: <strong>{qq.options[chosen]}</strong></p>
+                {!review.correct && <p>{t('bestAnswer')}: <strong>{qq.options[review.correctIndex]}</strong></p>}
+                <small>{review.explanation}</small>
               </li>
             )
           })}
         </ol>
 
-        <div className="mt-6 flex flex-wrap gap-3">
-          <button onClick={retry} className="btn-secondary">Try again</button>
+        <div className="quiz-actions">
+          <button onClick={retry} className="btn-secondary">{t('tryAgain')}</button>
         </div>
-      </div>
+      </section>
     )
   }
 
-  // ---------- question ----------
   return (
-    <div className="panel p-6">
-      <div className="flex items-center justify-between text-sm text-navy-600">
-        <span>Question {index + 1} of {questions.length}</span>
-        <span>{Object.keys(answers).length} answered</span>
-      </div>
-      <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-glacier-100">
-        <div className="h-full bg-glacier-500 transition-all" style={{ width: `${((index + 1) / questions.length) * 100}%` }} />
-      </div>
-
-      <fieldset className="mt-5">
-        <legend className="text-lg font-bold leading-snug">{q.text}</legend>
-        <div className="mt-4 space-y-2">
-          {q.options.map((opt, i) => {
-            const selected = answers[index] === i
-            return (
-              <label
-                key={opt}
-                className={`flex cursor-pointer items-center gap-3 rounded-lg border px-4 py-3 text-sm transition ${
-                  selected ? 'border-glacier-600 bg-glacier-100 font-semibold' : 'border-glacier-200 hover:border-glacier-400'}`}
-              >
-                <input
-                  type="radio" name={`q-${q.id}`} className="h-4 w-4 accent-[#2275a9]"
-                  checked={selected} onChange={() => setAnswers((a) => ({ ...a, [index]: i }))}
-                />
-                {opt}
-              </label>
-            )
-          })}
+    <section className="quiz-shell">
+      <div className="quiz-topbar">
+        <div>
+          <p className="eyebrow">{t('knowledgeCheck')}</p>
+          <h2>{quiz.title}</h2>
         </div>
-      </fieldset>
+        <div className="quiz-meter" aria-label={`${progress}% complete`}>
+          <strong>{progress}%</strong>
+          <span>{t('complete')}</span>
+        </div>
+      </div>
 
-      {submitError && <p className="mt-4 rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700" role="alert">{submitError}</p>}
+      <div className="quiz-progress">
+        <div style={{ width: `${progress}%` }} />
+      </div>
 
-      <div className="mt-6 flex justify-between">
-        <button className="btn-secondary" disabled={index === 0} onClick={() => setIndex((i) => i - 1)}>Previous</button>
-        {isLast ? (
-          <button className="btn-primary" disabled={!allAnswered || submitting} onClick={submit}>
-            {submitting ? 'Scoring…' : 'Submit answers'}
+      <div className="quiz-game-hud" aria-label={t('missionHud')}>
+        <div>
+          <span>{t('missionEnergy')}</span>
+          <strong>{energy}%</strong>
+        </div>
+        <div>
+          <span>{t('answered')}</span>
+          <strong>{answeredCount}/{questions.length}</strong>
+        </div>
+        <div>
+          <span>{t('checkpoint')}</span>
+          <strong>{checkpoint}/4</strong>
+        </div>
+        <div>
+          <span>{t('hintsUsed')}</span>
+          <strong>{hintCount}</strong>
+        </div>
+        <div>
+          <span>{t('missionScore')}</span>
+          <strong>{missionScore}</strong>
+        </div>
+      </div>
+
+      <div className="mission-track" aria-label={t('missionTrack')}>
+        {questions.map((question, i) => {
+          const state = answers[i] !== undefined ? 'is-cleared' : i === index ? 'is-active' : ''
+          return <span key={question.id} className={state} />
+        })}
+      </div>
+
+      <div className="question-dots" aria-label={t('questionProgress')}>
+        {questions.map((question, i) => (
+          <button
+            key={question.id}
+            className={`${i === index ? 'is-current' : ''} ${answers[i] !== undefined ? 'is-answered' : ''}`}
+            onClick={() => setIndex(i)}
+            aria-label={`${t('question')} ${i + 1}`}
+          >
+            {i + 1}
           </button>
-        ) : (
-          <button className="btn-primary" disabled={answers[index] === undefined} onClick={() => setIndex((i) => i + 1)}>Next question</button>
+        ))}
+      </div>
+
+      <div className="question-card">
+        <div className="question-card__header">
+          <span>{t('question')} {index + 1} {t('of')} {questions.length}</span>
+          <strong>{encouragement[index % encouragement.length]}</strong>
+        </div>
+        <div className="question-meta">
+          <span>{q.difficulty || t('fieldLevel')}</span>
+          <span>{t('questionReward')} +12</span>
+        </div>
+        <fieldset>
+          <legend>{q.text}</legend>
+          <div className="option-grid">
+            {q.options.map((option, optionIndex) => {
+              const selected = selectedAnswer === optionIndex
+              return (
+                <button
+                  type="button"
+                  key={option}
+                  className={`option-card ${selected ? 'is-selected' : ''}`}
+                  onClick={() => selectAnswer(optionIndex)}
+                  aria-pressed={selected}
+                >
+                  <span>{String.fromCharCode(65 + optionIndex)}</span>
+                  <strong>{option}</strong>
+                </button>
+              )
+            })}
+          </div>
+        </fieldset>
+        {q.hint && (
+          <div className="hint-panel">
+            {hintsUsed[index] ? (
+              <p><strong>{t('signalHint')}:</strong> {q.hint}</p>
+            ) : (
+              <button type="button" onClick={useHint}>{t('useSignalHint')}</button>
+            )}
+          </div>
         )}
       </div>
-    </div>
+
+      {submitError && <p className="quiz-alert" role="alert">{submitError}</p>}
+
+      <div className="quiz-actions">
+        <button className="btn-secondary" disabled={index === 0} onClick={() => setIndex((i) => i - 1)}>{t('back')}</button>
+        <p>{statusText}</p>
+        {isLast ? (
+          <button className="btn-primary" disabled={!allAnswered || submitting} onClick={submit}>
+            {submitting ? t('checking') : t('finishQuiz')}
+          </button>
+        ) : (
+          <button className="btn-primary" disabled={selectedAnswer === undefined} onClick={() => setIndex((i) => i + 1)}>
+            {t('next')}
+          </button>
+        )}
+      </div>
+
+      {!allAnswered && isLast && (
+        <button className="quiz-skip-link" onClick={jumpToFirstMissed}>{t('jumpUnanswered')}</button>
+      )}
+    </section>
   )
 }

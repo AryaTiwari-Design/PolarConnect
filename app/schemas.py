@@ -4,6 +4,7 @@ class RegisterRequest(BaseModel):
     name: str = Field(min_length=2, max_length=80)
     email: str = Field(min_length=5, max_length=254)
     password: str = Field(min_length=8, max_length=128)
+    role: str = "student"
 
 class LoginRequest(BaseModel):
     email: str

@@ -185,7 +185,7 @@ export async function mockRequest(method, fullPath, body, token) {
     const quiz = quizzes[m[1]]
     if (!quiz) fail(404, 'Quiz not found.')
     // answers are stripped before leaving the "server"
-    return { id: quiz.id, title: quiz.title, questions: quiz.questions.map(({ id, text, options }) => ({ id, text, options })) }
+    return { id: quiz.id, title: quiz.title, questions: quiz.questions.map(({ id, text, options, hint, difficulty }) => ({ id, text, options, hint, difficulty })) }
   }
   if (method === 'POST' && (m = path.match(/^\/quizzes\/([^/]+)\/submit$/))) {
     needLogin()
