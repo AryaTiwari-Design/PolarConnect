@@ -15,13 +15,20 @@ function Sources({ sources }) {
       <ul className="mt-2 flex flex-wrap gap-2">
         {sources.map((s, i) => (
           <li key={`${s.paper_id}-${s.page}-${i}`}>
-            <Link
-              to={`/research/${s.paper_id}`}
-              className="inline-flex max-w-xs items-center gap-1.5 rounded-lg border border-glacier-200 bg-glacier-50 px-2.5 py-1.5 text-xs font-semibold text-glacier-700 hover:border-glacier-500"
-            >
-              <span className="truncate">{s.title}</span>
-              <span className="shrink-0 rounded bg-glacier-100 px-1.5 py-0.5">p. {s.page}</span>
-            </Link>
+            {String(s.paper_id).startsWith('p') ? (
+              <Link
+                to={`/research/${s.paper_id}`}
+                className="inline-flex max-w-xs items-center gap-1.5 rounded-lg border border-glacier-200 bg-glacier-50 px-2.5 py-1.5 text-xs font-semibold text-glacier-700 hover:border-glacier-500"
+              >
+                <span className="truncate">{s.title}</span>
+                <span className="shrink-0 rounded bg-glacier-100 px-1.5 py-0.5">p. {s.page}</span>
+              </Link>
+            ) : (
+              <span className="inline-flex max-w-xs items-center gap-1.5 rounded-lg border border-glacier-200 bg-glacier-50 px-2.5 py-1.5 text-xs font-semibold text-glacier-700">
+                <span className="truncate">{s.title}</span>
+                <span className="shrink-0 rounded bg-glacier-100 px-1.5 py-0.5">p. {s.page}</span>
+              </span>
+            )}
           </li>
         ))}
       </ul>

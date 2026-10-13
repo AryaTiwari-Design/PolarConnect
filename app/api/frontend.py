@@ -1,5 +1,8 @@
+import os
+import re
 from io import BytesIO
 
+import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import Response
 from reportlab.lib.pagesizes import letter
@@ -9,6 +12,7 @@ from app.api.auth import get_current_user
 from app.database.db import connection
 
 router = APIRouter(prefix="/api", tags=["Frontend App"])
+RAG_SERVICE_URL = os.getenv("RAG_SERVICE_URL", "http://127.0.0.1:8001")
 
 SEED_PAPERS = [
     {
@@ -235,6 +239,22 @@ CHAT_TOPICS = [
 ]
 
 
+async def _ask_rag_service(question: str):
+    try:
+        async with httpx.AsyncClient(timeout=20) as client:
+            response = await client.post(f"{RAG_SERVICE_URL}/chat", json={"question": question, "limit": 5})
+            response.raise_for_status()
+    except (httpx.HTTPError, ValueError):
+        return None
+
+    data = response.json()
+    sources = data.get("sources") or []
+    answer = str(data.get("answer") or "").strip()
+    if not answer or not sources:
+        return None
+    return {"answer": answer, "sources": sources}
+
+
 def _seed_papers():
     with connection() as conn:
         for paper in SEED_PAPERS:
@@ -411,10 +431,13 @@ async def chat(payload: dict, user: dict = Depends(get_current_user)):
     question = str(payload.get("question") or "").strip()
     if not question:
         raise HTTPException(status_code=400, detail="Please type a question.")
+    rag_answer = await _ask_rag_service(question)
+    if rag_answer:
+        return rag_answer
+
     lower = question.lower()
     answer = "The approved research papers do not cover this question yet, so I would rather not guess. Try asking about ice shelves, sea ice, krill, penguins, ozone or subglacial life."
     sources = []
-    import re
     for pattern, topic_answer, topic_sources in CHAT_TOPICS:
         if re.search(pattern, lower):
             answer = topic_answer
