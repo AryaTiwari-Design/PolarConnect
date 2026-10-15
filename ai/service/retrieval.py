@@ -3,7 +3,7 @@ from collections import Counter
 from math import log
 
 from .store import load_index
-from .vector_store import VectorStoreUnavailable, query_vectors
+from .vector_store import VectorStoreUnavailable, count_vectors, has_vector_index, query_vectors
 
 STOPWORDS = {
     "a",
@@ -36,12 +36,14 @@ def tokenize(text: str) -> list[str]:
 
 
 def retrieve(question: str, limit: int = 5) -> list[dict]:
-    try:
-        vector_chunks = query_vectors(question, limit=limit)
-        if vector_chunks:
-            return vector_chunks
-    except VectorStoreUnavailable:
-        pass
+    if has_vector_index():
+        try:
+            if count_vectors() > 0:
+                vector_chunks = query_vectors(question, limit=limit)
+                if vector_chunks:
+                    return vector_chunks
+        except VectorStoreUnavailable:
+            pass
 
     index = load_index()
     query_terms = Counter(tokenize(question))

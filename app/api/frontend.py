@@ -1,5 +1,6 @@
 import os
 import re
+import json
 from io import BytesIO
 
 import httpx
@@ -292,6 +293,18 @@ def _progress(user_id):
     return quizzes, xp
 
 
+def _save_chat_exchange(user_id: int, question: str, answer: str, sources: list[dict]):
+    with connection() as conn:
+        conn.execute(
+            "INSERT INTO chat_messages (user_id, role, content) VALUES (?, 'user', ?)",
+            (user_id, question),
+        )
+        conn.execute(
+            "INSERT INTO chat_messages (user_id, role, content, sources_json) VALUES (?, 'assistant', ?, ?)",
+            (user_id, answer, json.dumps(sources)),
+        )
+
+
 @router.get("/research")
 def list_research(
     q: str | None = None,
@@ -433,6 +446,7 @@ async def chat(payload: dict, user: dict = Depends(get_current_user)):
         raise HTTPException(status_code=400, detail="Please type a question.")
     rag_answer = await _ask_rag_service(question)
     if rag_answer:
+        _save_chat_exchange(user["id"], question, rag_answer["answer"], rag_answer["sources"])
         return rag_answer
 
     lower = question.lower()
@@ -444,12 +458,34 @@ async def chat(payload: dict, user: dict = Depends(get_current_user)):
             sources = topic_sources
             break
     papers = {paper["id"]: paper for paper in SEED_PAPERS}
-    return {"answer": answer, "sources": [{**src, "title": papers.get(src["paper_id"], {}).get("title", "Research paper")} for src in sources]}
+    titled_sources = [{**src, "title": papers.get(src["paper_id"], {}).get("title", "Research paper")} for src in sources]
+    _save_chat_exchange(user["id"], question, answer, titled_sources)
+    return {"answer": answer, "sources": titled_sources}
 
 
 @router.get("/chat/history")
 def chat_history(user: dict = Depends(get_current_user)):
-    return {"items": []}
+    with connection() as conn:
+        rows = conn.execute(
+            """
+            SELECT role, content, sources_json
+            FROM chat_messages
+            WHERE user_id = ?
+            ORDER BY id ASC
+            LIMIT 80
+            """,
+            (user["id"],),
+        ).fetchall()
+    items = []
+    for row in rows:
+        item = {"role": row["role"], "content": row["content"]}
+        if row["sources_json"]:
+            try:
+                item["sources"] = json.loads(row["sources_json"])
+            except json.JSONDecodeError:
+                item["sources"] = []
+        items.append(item)
+    return {"items": items}
 
 
 @router.get("/education")
